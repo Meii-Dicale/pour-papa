@@ -98,19 +98,30 @@ function App() {
     }
   };
 
+  // Fragment the image into 10x10 squares and resize to fit the grid
   const fragmentImage = (image) => {
+    const gridSize = 500; // Taille totale de la grille
+    const size = gridSize / 10; // Taille de chaque carré (50px si la grille est 500x500)
+    
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    const size = 50; // Size of each square
+    
     canvas.width = size;
     canvas.height = size;
+    
+    // Redimensionner l'image entière à 500x500
+    const scaledCanvas = document.createElement('canvas');
+    const scaledCtx = scaledCanvas.getContext('2d');
+    scaledCanvas.width = gridSize;
+    scaledCanvas.height = gridSize;
+    scaledCtx.drawImage(image, 0, 0, gridSize, gridSize); // Dessine l'image redimensionnée dans le canvas
     
     const fragments = [];
     for (let row = 0; row < 10; row++) {
       for (let col = 0; col < 10; col++) {
         ctx.clearRect(0, 0, size, size);
-        ctx.drawImage(image, col * size, row * size, size, size, 0, 0, size, size);
-        fragments.push(canvas.toDataURL()); // Save each part as a data URL
+        ctx.drawImage(scaledCanvas, col * size, row * size, size, size, 0, 0, size, size); // Découpe l'image redimensionnée
+        fragments.push(canvas.toDataURL()); // Enregistre chaque fragment en tant que data URL
       }
     }
     return fragments;
