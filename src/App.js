@@ -3,13 +3,12 @@ import './App.css';
 
 const ROTATE_CLOCKWISE = 'ROTATE_CLOCKWISE';
 const ROTATE_COUNTERCLOCKWISE = 'ROTATE_COUNTERCLOCKWISE';
-const TOGGLE_TRANSPARENCY = 'TOGGLE_TRANSPARENCY';
+const UPLOAD_IMAGE = 'UPLOAD_IMAGE';
 const RESET = 'RESET';
 const UNDO = 'UNDO';
 const REDO = 'REDO';
-const UPLOAD_IMAGE = 'UPLOAD_IMAGE';
 
-const initialGrid = Array(10).fill().map(() => Array(10).fill({ rotation: 0, transparent: false, image: null }));
+const initialGrid = Array(10).fill().map(() => Array(10).fill({ rotation: 0, image: null }));
 
 function gridReducer(state, action) {
   switch (action.type) {
@@ -29,26 +28,15 @@ function gridReducer(state, action) {
             : cell
         )
       );
-    case TOGGLE_TRANSPARENCY:
-      return state.map((row, rowIndex) =>
-        row.map((cell, colIndex) =>
-          rowIndex === action.row && colIndex === action.col
-            ? { ...cell, transparent: !cell.transparent }
-            : cell
-        )
-      );
-    case RESET:
-      return initialGrid;
     case UPLOAD_IMAGE:
       return state.map((row, rowIndex) =>
         row.map((cell, colIndex) => ({
           ...cell,
-          image: action.images[rowIndex * 10 + colIndex], // Associe la portion d'image à chaque cellule
+          image: action.images[rowIndex * 10 + colIndex],
         }))
       );
-    case UNDO:
-    case REDO:
-      return action.history[action.step] || state;
+    case RESET:
+      return action.grid;
     default:
       return state;
   }
@@ -56,32 +44,29 @@ function gridReducer(state, action) {
 
 function App() {
   const [grid, dispatch] = useReducer(gridReducer, initialGrid);
-  const [history, setHistory] = useState([initialGrid]);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [selectedSquare, setSelectedSquare] = useState(null);
+  const [originalImage, setOriginalImage] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [future, setFuture] = useState([]);
 
-  const handleAction = (action) => {
-    const newGrid = gridReducer(grid, action);
-    const newHistory = [...history.slice(0, currentStep + 1), newGrid];
-    setHistory(newHistory);
-    setCurrentStep(newHistory.length - 1);
-    dispatch(action);
-  };
-
-  const undo = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-      dispatch({ type: UNDO, history, step: currentStep - 1 });
+  const handleRotateClockwise = () => {
+    if (selectedSquare) {
+      saveStateToHistory();
+      dispatch({ type: ROTATE_CLOCKWISE, row: selectedSquare.row, col: selectedSquare.col });
     }
   };
 
-  const redo = () => {
-    if (currentStep < history.length - 1) {
-      setCurrentStep(currentStep + 1);
-      dispatch({ type: REDO, history, step: currentStep + 1 });
+  const handleRotateCounterClockwise = () => {
+    if (selectedSquare) {
+      saveStateToHistory();
+      dispatch({ type: ROTATE_COUNTERCLOCKWISE, row: selectedSquare.row, col: selectedSquare.col });
     }
   };
 
-  // Handle image upload and fragmentation
+  const handleSquareClick = (rowIndex, colIndex) => {
+    setSelectedSquare({ row: rowIndex, col: colIndex });
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -91,40 +76,101 @@ function App() {
         img.src = event.target.result;
         img.onload = () => {
           const images = fragmentImage(img);
-          handleAction({ type: UPLOAD_IMAGE, images });
+          setOriginalImage(img);
+          saveStateToHistory();
+          dispatch({ type: UPLOAD_IMAGE, images });
         };
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // Fragment the image into 10x10 squares and resize to fit the grid
   const fragmentImage = (image) => {
-    const gridSize = 500; // Taille totale de la grille
-    const size = gridSize / 10; // Taille de chaque carré (50px si la grille est 500x500)
-    
+    const gridSize = 500;
+    const size = gridSize / 10;
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     canvas.width = size;
     canvas.height = size;
-    
-    // Redimensionner l'image entière à 500x500
+
     const scaledCanvas = document.createElement('canvas');
     const scaledCtx = scaledCanvas.getContext('2d');
     scaledCanvas.width = gridSize;
     scaledCanvas.height = gridSize;
-    scaledCtx.drawImage(image, 0, 0, gridSize, gridSize); // Dessine l'image redimensionnée dans le canvas
-    
+    scaledCtx.drawImage(image, 0, 0, gridSize, gridSize);
+
     const fragments = [];
     for (let row = 0; row < 10; row++) {
       for (let col = 0; col < 10; col++) {
         ctx.clearRect(0, 0, size, size);
-        ctx.drawImage(scaledCanvas, col * size, row * size, size, size, 0, 0, size, size); // Découpe l'image redimensionnée
-        fragments.push(canvas.toDataURL()); // Enregistre chaque fragment en tant que data URL
+        ctx.drawImage(scaledCanvas, col * size, row * size, size, size, 0, 0, size, size);
+        fragments.push(canvas.toDataURL());
       }
     }
     return fragments;
+  };
+
+  const handleReset = () => {
+    if (originalImage) {
+      const images = fragmentImage(originalImage);
+      saveStateToHistory();
+      dispatch({
+        type: RESET,
+        grid: initialGrid.map((row, rowIndex) =>
+          row.map((cell, colIndex) => ({
+            ...cell,
+            image: images[rowIndex * 10 + colIndex],
+          }))
+        ),
+      });
+    }
+  };
+
+  const saveStateToHistory = () => {
+    setHistory([...history, grid]);
+    setFuture([]);
+  };
+
+  const handleUndo = () => {
+    if (history.length > 0) {
+      const prevState = history.pop();
+      setFuture([grid, ...future]);
+      setHistory([...history]);
+      dispatch({ type: RESET, grid: prevState });
+    }
+  };
+
+  const handleRedo = () => {
+    if (future.length > 0) {
+      const nextState = future.shift();
+      setHistory([...history, grid]);
+      setFuture([...future]);
+      dispatch({ type: RESET, grid: nextState });
+    }
+  };
+
+  const handleDragStart = (e, rowIndex, colIndex) => {
+    e.dataTransfer.setData('text/plain', `${rowIndex},${colIndex}`);
+  };
+
+  const handleDrop = (e, rowIndex, colIndex) => {
+    const draggedPos = e.dataTransfer.getData('text/plain');
+    const [draggedRow, draggedCol] = draggedPos.split(',').map(Number);
+
+    if (draggedRow !== rowIndex || draggedCol !== colIndex) {
+      saveStateToHistory();
+      const newGrid = [...grid];
+      const temp = newGrid[rowIndex][colIndex];
+      newGrid[rowIndex][colIndex] = newGrid[draggedRow][draggedCol];
+      newGrid[draggedRow][draggedCol] = temp;
+      dispatch({ type: RESET, grid: newGrid });
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
   };
 
   return (
@@ -135,28 +181,30 @@ function App() {
           row.map((cell, colIndex) => (
             <div
               key={`${rowIndex}-${colIndex}`}
-              className={`square ${cell.transparent ? 'transparent' : ''}`}
+              className={`square ${selectedSquare && selectedSquare.row === rowIndex && selectedSquare.col === colIndex ? 'highlight' : ''}`}
               style={{
                 transform: `rotate(${cell.rotation}deg)`,
                 backgroundImage: cell.image ? `url(${cell.image})` : '',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }}
-              onClick={() => handleAction({ type: ROTATE_CLOCKWISE, row: rowIndex, col: colIndex })}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                handleAction({ type: ROTATE_COUNTERCLOCKWISE, row: rowIndex, col: colIndex });
-              }}
-              onDoubleClick={() =>
-                handleAction({ type: TOGGLE_TRANSPARENCY, row: rowIndex, col: colIndex })
-              }
+              onClick={() => handleSquareClick(rowIndex, colIndex)}
+              draggable
+              onDragStart={(e) => handleDragStart(e, rowIndex, colIndex)}
+              onDrop={(e) => handleDrop(e, rowIndex, colIndex)}
+              onDragOver={handleDragOver}
             />
           ))
         )}
       </div>
-      <button onClick={() => handleAction({ type: RESET })}>Reset</button>
-      <button onClick={undo}>Undo</button>
-      <button onClick={redo}>Redo</button>
+
+      <div className="controls">
+        <button onClick={handleRotateCounterClockwise}>-90°</button>
+        <button onClick={handleRotateClockwise}>+90°</button>
+        <button onClick={handleUndo}>Undo</button>
+        <button onClick={handleRedo}>Redo</button>
+        <button onClick={handleReset}>Reset</button>
+      </div>
     </div>
   );
 }

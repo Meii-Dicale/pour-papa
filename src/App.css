@@ -1,38 +1,106 @@
-.App {
+/* Styles généraux pour les carrés d'images */
+.square {
+  width: 50px;
+  height: 50px;
+  border: 1px solid #ccc;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+/* Ajouter un highlight pour le carré sélectionné */
+.square.selected {
+  border: 2px solid #ff6347; /* Un bord visible pour le carré sélectionné */
+}
+
+/* Conteneur des boutons de rotation */
+.buttons {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10; /* Mettre les boutons au-dessus des images */
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 5px;
+}
+
+/* Style des boutons */
+.buttons button {
+  width: 10px; /* Rendre les boutons plus petits */
+  height: 10px;
+  font-size: 12px; /* Texte plus petit */
   text-align: center;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  border-radius: 5px;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* Effet au survol des boutons */
+.buttons button:hover {
+  transform: scale(1.2);
+  background-color: rgba(0, 0, 0, 0.8);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+/* Styles pour les cases sélectionnées */
+.selected {
+  border: 2px solid #ff6347;
+  background-color: rgba(255, 99, 71, 0.2); /* Légèrement teinté */
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+/* Conteneur principal */
+.App {
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-top: 20px;
+}
+
+/* Grille d'images */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(10, 50px);
+  grid-template-rows: repeat(10, 50px);
+  gap: 2px;
+  margin-bottom: 20px;
+}
+
+/* Conteneur pour les boutons de contrôle (Undo, Redo, Reset) */
+.controls {
+  display: flex;
+  gap: 10px;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
+  margin-top: 20px;
+}
+.controls button {
+  padding: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 5px;
+  background-color: #4CAF50;
   color: white;
+  border: none;
+  transition: background-color 0.3s;
 }
 
-.App-link {
-  color: #61dafb;
+.controls button:hover {
+  background-color: #45a049;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+
+.square {
+  width: 50px;
+  height: 50px;
+  display: inline-block;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.square.highlight {
+  border: 3px solid #f00; /* Bordure rouge pour la case sélectionnée */
+  transform: scale(1.1); /* Grossir un peu la case */
 }
